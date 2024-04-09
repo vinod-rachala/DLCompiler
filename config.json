@@ -1,0 +1,5 @@
+{
+    "METAFLOW_DATASTORE": "s3",
+    "METAFLOW_DATATOOLS_S3ROOT": "s3://your-bucket-name/metaflow/",
+    "METAFLOW_DATASTORE_SYSROOT_S3": "s3://your-bucket-name/metaflow/"
+}
