@@ -1,22 +1,19 @@
 # Use the official Python image as the base
-FROM python:3.8
+FROM python:3.8-slim
 
 # Set the working directory in the container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy the current directory contents into the container
-COPY . .
+# Install Metaflow
+RUN pip install metaflow
 
-# Install Metaflow and any other required packages
-RUN pip install metaflow boto3
+# Copy the Metaflow script and the Metaflow config file into the container
+COPY sample_flow.py config.json ./
 
-# Set AWS credentials and Metaflow configuration as environment variables
-# Replace YOUR_BUCKET_NAME with your actual S3 bucket name
-ENV AWS_ACCESS_KEY_ID=your_access_key_id
-ENV AWS_SECRET_ACCESS_KEY=your_secret_access_key
-ENV AWS_DEFAULT_REGION=your_aws_region
-ENV METAFLOW_DATATOOLS_S3ROOT=s3://YOUR_BUCKET_NAME/metaflow/
-ENV METAFLOW_DATASTORE_SYSROOT_S3=s3://YOUR_BUCKET_NAME/metaflow/
+# Metaflow will automatically look for a config.json file in the current directory,
+# the user's home directory, or /metaflow.
+# Set the HOME environment variable so Metaflow finds config.json in /app.
+ENV HOME=/app
 
-# Run the Metaflow script when the container launches
+# Run the Metaflow script
 CMD ["python", "sample_flow.py"]
