@@ -1,0 +1,33 @@
+# Base image
+FROM python:3.9-slim
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+    awscli \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Metaflow
+RUN pip install metaflow
+
+# Set environment variables for Metaflow to write metadata to S3
+ENV METAFLOW_DEFAULT_DATASTORE=s3
+ENV METAFLOW_DATASTORE_SYSROOT_S3=<Your_S3_Bucket_Root>  # The base S3 path for Metaflow metadata
+ENV METAFLOW_DATATOOLS_S3ROOT=<Your_S3_Bucket_DataRoot>  # Where Metaflow will store data artifacts
+
+# Configure AWS CLI with the SageMaker execution role (this should be configured at runtime)
+ENV AWS_DEFAULT_REGION=<Your_AWS_Region>  # e.g., 'us-east-1'
+
+# Create a working directory
+WORKDIR /app
+
+# Copy project files (if you have any Python scripts to run)
+COPY . .
+
+# Set the default command (optional, depends on your use case)
+CMD ["python", "your_script.py"]  # Replace with the script you intend to run in your SageMaker endpoint
