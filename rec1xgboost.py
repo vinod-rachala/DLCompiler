@@ -4,47 +4,12 @@ from xgboost import XGBClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-import random
 
-# Step 1: Generate Synthetic Data
-def generate_synthetic_data(num_rows=2000):
-    validation_criteria_types = [
-        "api.accountVelocity", "api.transactionLimit", "api.purchaseLimit", 
-        "api.userAccess", "api.paymentThreshold", "api.fraudCheck"
-    ]
-    
-    failure_details_templates = [
-        "Expected: {} but none found", 
-        "Expected: {} but null found", 
-        "Expected: {} but mismatched value",
-        "Expected: {} but zero count"
-    ]
-    
-    expected_fields = ["approvedCount", "transactionID", "PurchaseAmount", "userLimit", "thresholdValue"]
-    
-    recommendations_templates = [
-        "Expected: PurchaseAmount but none found", 
-        "Expected: transactionLimit but null found", 
-        "Expected: PurchaseAmount but zero count"
-    ]
-    
-    synthetic_data = {
-        "VALIDATION_CRITERIA_TYPE": [],
-        "FAILURE_DETAILS": [],
-        "RECOMMENDATION": []
-    }
-    
-    for _ in range(num_rows):
-        validation_type = random.choice(validation_criteria_types)
-        expected_field = random.choice(expected_fields)
-        failure_detail = random.choice(failure_details_templates).format(expected_field)
-        recommendation = random.choice(recommendations_templates)
-    
-        synthetic_data["VALIDATION_CRITERIA_TYPE"].append(validation_type)
-        synthetic_data["FAILURE_DETAILS"].append(failure_detail)
-        synthetic_data["RECOMMENDATION"].append(recommendation)
-
-    return pd.DataFrame(synthetic_data)
+# Step 1: Read data from CSV
+def read_csv_data(file_path):
+    # Assuming the CSV contains columns: VALIDATION_CRITERIA_TYPE, FAILURE_DETAILS, RECOMMENDATION
+    df = pd.read_csv(file_path)
+    return df
 
 # Step 2: Preprocess the data using TF-IDF
 def preprocess_data(df):
@@ -79,8 +44,9 @@ def predict_sample(model, tfidf, le):
 
 # Main function to run the entire process
 if __name__ == "__main__":
-    # Generate synthetic data
-    df = generate_synthetic_data(2000)
+    # Read CSV data
+    file_path = 'data.csv'  # Change this to the actual path of your CSV file
+    df = read_csv_data(file_path)
     
     # Preprocess data
     X, y, tfidf, le = preprocess_data(df)
