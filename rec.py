@@ -3,7 +3,8 @@ import numpy as np
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Embedding
+from tensorflow.keras.layers import LSTM, Dense, Embedding, Dropout
+from tensorflow.keras.optimizers import Adam
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
@@ -40,16 +41,22 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 # Build the LSTM model
 model = Sequential()
-model.add(Embedding(input_dim=5000, output_dim=64, input_length=20))
-model.add(LSTM(64, return_sequences=False))
-model.add(Dense(32, activation='relu'))
+model.add(Embedding(input_dim=5000, output_dim=128, input_length=20))  # Increase embedding dimension
+model.add(LSTM(128, return_sequences=False))  # Increase LSTM units to capture complexity
+model.add(Dropout(0.5))  # Add dropout to avoid overfitting
+model.add(Dense(64, activation='relu'))  # Increase dense layer units
+model.add(Dropout(0.5))  # Another dropout for regularization
 model.add(Dense(len(le.classes_), activation='softmax'))
 
-# Compile the model
-model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+# Configure the optimizer with a custom learning rate
+learning_rate = 0.001  # Custom learning rate
+optimizer = Adam(learning_rate=learning_rate)
 
-# Train the model
-model.fit(X_train, y_train, epochs=10, batch_size=2, verbose=0)
+# Compile the model with the optimizer and metrics
+model.compile(loss='sparse_categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+# Train the model with a custom batch size and epochs
+model.fit(X_train, y_train, epochs=20, batch_size=16, verbose=1)  # Custom epochs and batch size
 
 # Evaluate the model's accuracy
 accuracy = model.evaluate(X_test, y_test, verbose=0)
