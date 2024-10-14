@@ -30,6 +30,7 @@ label_encoder_criteria = LabelEncoder()
 label_encoder_failure = LabelEncoder()
 label_encoder_recommendation = LabelEncoder()
 
+# Encode the validation criteria, failure details, and recommendations
 df['VALIDATION_CRITERIA_TYPE_ENC'] = label_encoder_criteria.fit_transform(df['VALIDATION_CRITERIA_TYPE'])
 df['FAILURE_DETAILS_ENC'] = label_encoder_failure.fit_transform(df['FAILURE_DETAILS'])
 df['RECOMMENDATION_ENC'] = label_encoder_recommendation.fit_transform(df['RECOMMENDATION'])
@@ -40,7 +41,9 @@ y = df['RECOMMENDATION_ENC']
 
 # Splitting the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
+# Adjust y_train and y_test to be zero-indexed
+y_train_zero_indexed = y_train - 1
+y_test_zero_indexed = y_test - 1
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
 
@@ -48,13 +51,16 @@ from sklearn.metrics import accuracy_score
 model = xgb.XGBClassifier(objective='multi:softmax', num_class=len(df['RECOMMENDATION_ENC'].unique()))
 
 # Train the model
-model.fit(X_train, y_train)
+model.fit(X_train, y_train_zero_indexed)
 
 # Predict on test data
 y_pred = model.predict(X_test)
 
+# Add 1 back to the predictions to match the original labels
+y_pred_original_labels = y_pred + 1
+
 # Evaluate the model
-accuracy = accuracy_score(y_test, y_pred)
+accuracy = accuracy_score(y_test, y_pred_original_labels)
 print(f"Model Accuracy: {accuracy}")
 
 
@@ -72,6 +78,9 @@ new_test_case['FAILURE_DETAILS_ENC'] = label_encoder_failure.transform(new_test_
 new_X = new_test_case[['VALIDATION_CRITERIA_TYPE_ENC', 'FAILURE_DETAILS_ENC']]
 predicted_recommendation = model.predict(new_X)
 
+# Add 1 back to match the original class labels
+predicted_recommendation_original = predicted_recommendation + 1
+
 # Decode the predicted recommendation to get the original recommendation text
-predicted_recommendation_text = label_encoder_recommendation.inverse_transform(predicted_recommendation)
+predicted_recommendation_text = label_encoder_recommendation.inverse_transform(predicted_recommendation_original)
 print(f"Recommended Output: {predicted_recommendation_text[0]}")
