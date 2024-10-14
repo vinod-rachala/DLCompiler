@@ -5,6 +5,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Embedding
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 
 # Sample Data
 data = {
@@ -31,9 +32,11 @@ X = tokenizer.texts_to_sequences(df['VALIDATION_CRITERIA_TYPE'] + " " + df['FAIL
 X = pad_sequences(X, padding='post', maxlen=20)
 
 # Encode the recommendations into numerical labels
-from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
 y = le.fit_transform(df['RECOMMENDATION'])
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Build the LSTM model
 model = Sequential()
@@ -46,7 +49,11 @@ model.add(Dense(len(le.classes_), activation='softmax'))
 model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # Train the model
-model.fit(X, y, epochs=10, batch_size=2)
+model.fit(X_train, y_train, epochs=10, batch_size=2, verbose=0)
+
+# Evaluate the model's accuracy
+accuracy = model.evaluate(X_test, y_test, verbose=0)
+print(f"Model Accuracy: {accuracy[1] * 100:.2f}%")
 
 # Make predictions on new data
 test_data = ["api.accountVelocity Expected: approvedCount but none found"]
@@ -58,4 +65,4 @@ predictions = model.predict(test_padded)
 predicted_label = np.argmax(predictions, axis=1)
 predicted_recommendation = le.inverse_transform(predicted_label)
 
-print(f"Predicted Recommendation: {predicted_recommendation[0]}")
+print(f"Sample Prediction: {predicted_recommendation[0]}")
