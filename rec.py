@@ -2,13 +2,16 @@ import pandas as pd
 import numpy as np
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, LSTM, Dense, TimeDistributed
 from sklearn.model_selection import train_test_split
 
-# Step 1: Load CSV Data
-input_file = 'input_data.csv'
-data = pd.read_csv(input_file)
+# Sample data (replace with your actual data)
+data = pd.DataFrame({
+    'VALIDATION_CRITERIA_TYPE': ['Type1', 'Type2', 'Type1', 'Type3', 'Type2', 'Type1', 'Type3'],
+    'FAILURE_DETAILS': ['Error in module A', 'Timeout in module B', 'Crash in module C', 'Error in module D', 
+                        'Timeout in module A', 'Crash in module E', 'Error in module F'],
+    'RECOMMENDATION': ['Restart A', 'Increase timeout B', 'Debug module C', 'Restart D', 
+                       'Increase timeout A', 'Debug module E', 'Restart F']
+})
 
 # Combine validation type and failure details as input text
 data['INPUT_TEXT'] = data['VALIDATION_CRITERIA_TYPE'] + " " + data['FAILURE_DETAILS']
@@ -30,28 +33,40 @@ max_seq_length = max(max(len(seq) for seq in X_seq), max(len(seq) for seq in y_s
 X_padded = pad_sequences(X_seq, maxlen=max_seq_length, padding='post')
 y_padded = pad_sequences(y_seq, maxlen=max_seq_length, padding='post')
 
-# Split the data into training and test sets
+# Split into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X_padded, y_padded, test_size=0.2, random_state=42)
 
 # Vocabulary size
 vocab_size = len(tokenizer.word_index) + 1
 
-# Step 2: Define LSTM Model
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense, TimeDistributed
+
+# Define the model architecture
 model = Sequential()
+
+# Embedding layer to convert words into vector representations
 model.add(Embedding(input_dim=vocab_size, output_dim=128, input_length=max_seq_length))
+
+# LSTM layer
 model.add(LSTM(256, return_sequences=True))
+
+# Dense layer for generating recommendations
 model.add(TimeDistributed(Dense(vocab_size, activation='softmax')))
 
 # Compile the model
 model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# Step 3: Train the Model
+# Print model summary
+model.summary()
+
+# Train the model
 model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
 
-# Save the tokenizer and model if needed for future use
-model.save("lstm_model.h5")
 
-# Step 4: Function to Generate Recommendations for New Data
+
 def generate_recommendation(validation_criteria, failure_details):
     # Combine the input into a single string
     input_text = validation_criteria + " " + failure_details
@@ -69,11 +84,8 @@ def generate_recommendation(validation_criteria, failure_details):
 
     return predicted_text
 
-# Step 5: Generate Recommendations for the Whole Dataset
-data['GENERATED_RECOMMENDATION'] = data.apply(lambda row: generate_recommendation(row['VALIDATION_CRITERIA_TYPE'], row['FAILURE_DETAILS']), axis=1)
-
-# Step 6: Save Generated Recommendations to CSV
-output_file = 'output_recommendations.csv'
-data.to_csv(output_file, index=False)
-
-print(f"Generated recommendations have been saved to {output_file}")
+# Example of generating recommendations
+validation_criteria = "Type1"
+failure_details = "Timeout in module C"
+recommendation = generate_recommendation(validation_criteria, failure_details)
+print(f"Generated Recommendation: {recommendation}")
