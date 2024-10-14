@@ -1,64 +1,77 @@
 import pandas as pd
-import numpy as np
-from xgboost import XGBClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Sample dataset
+data = {
+    'VALIDATION_CRITERIA_TYPE': [
+        'api.accountVelocity', 'api.paymentDetails', 'api.accountVelocity', 'api.accountBalance'
+    ],
+    'FAILURE_DETAILS': [
+        'Expected : approvedCount but none found',
+        'Expected : paymentAmount but none found',
+        'Expected : approvedCount but none found',
+        'Expected : balanceAmount but none found'
+    ],
+    'RECOMMENDATION': [
+        'Expected : PurchaseAmount but none found',
+        'Expected : finalPaymentAmount but none found',
+        'Expected : PurchaseAmount but none found',
+        'Expected : transactionAmount but none found'
+    ]
+}
+
+df = pd.DataFrame(data)
+print(df)
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-# Step 1: Read data from CSV
-def read_csv_data(file_path):
-    # Assuming the CSV contains columns: VALIDATION_CRITERIA_TYPE, FAILURE_DETAILS, RECOMMENDATION
-    df = pd.read_csv(file_path)
-    return df
+# Label encoding for the categorical columns
+label_encoder_criteria = LabelEncoder()
+label_encoder_failure = LabelEncoder()
+label_encoder_recommendation = LabelEncoder()
 
-# Step 2: Preprocess the data using TF-IDF
-def preprocess_data(df):
-    tfidf = TfidfVectorizer(max_features=1000)  # Reduced to 1000 most frequent terms
-    X = tfidf.fit_transform(df['VALIDATION_CRITERIA_TYPE'] + " " + df['FAILURE_DETAILS'])
-    
-    # Encode the recommendations into numerical labels
-    le = LabelEncoder()
-    y = le.fit_transform(df['RECOMMENDATION'])
-    
-    return X, y, tfidf, le
+df['VALIDATION_CRITERIA_TYPE_ENC'] = label_encoder_criteria.fit_transform(df['VALIDATION_CRITERIA_TYPE'])
+df['FAILURE_DETAILS_ENC'] = label_encoder_failure.fit_transform(df['FAILURE_DETAILS'])
+df['RECOMMENDATION_ENC'] = label_encoder_recommendation.fit_transform(df['RECOMMENDATION'])
 
-# Step 3: Train the XGBoost model with optimized parameters
-def train_xgboost(X_train, y_train):
-    model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', n_estimators=100, learning_rate=0.1, subsample=0.5)
-    model.fit(X_train, y_train)
-    return model
+# Defining features (X) and target (y)
+X = df[['VALIDATION_CRITERIA_TYPE_ENC', 'FAILURE_DETAILS_ENC']]
+y = df['RECOMMENDATION_ENC']
 
-# Step 4: Evaluate the XGBoost Model
-def evaluate_model(model, X_test, y_test):
-    accuracy = model.score(X_test, y_test)
-    print(f"Model Accuracy: {accuracy * 100:.2f}%")
+# Splitting the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Step 5: Make Sample Predictions
-def predict_sample(model, tfidf, le):
-    test_data = ["api.accountVelocity Expected: approvedCount but none found"]
-    test_vector = tfidf.transform(test_data)
-    prediction = model.predict(test_vector)
-    predicted_recommendation = le.inverse_transform(prediction)
-    
-    print(f"Sample Prediction: {predicted_recommendation[0]}")
+import xgboost as xgb
+from sklearn.metrics import accuracy_score
 
-# Main function to run the entire process
-if __name__ == "__main__":
-    # Read CSV data
-    file_path = 'data.csv'  # Change this to the actual path of your CSV file
-    df = read_csv_data(file_path)
-    
-    # Preprocess data
-    X, y, tfidf, le = preprocess_data(df)
-    
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    # Train XGBoost model
-    model = train_xgboost(X_train, y_train)
-    
-    # Evaluate the model
-    evaluate_model(model, X_test, y_test)
-    
-    # Make a sample prediction
-    predict_sample(model, tfidf, le)
+# Initialize the XGBoost classifier
+model = xgb.XGBClassifier(objective='multi:softmax', num_class=len(df['RECOMMENDATION_ENC'].unique()))
+
+# Train the model
+model.fit(X_train, y_train)
+
+# Predict on test data
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy}")
+
+
+# Example new test case
+new_test_case = pd.DataFrame({
+    'VALIDATION_CRITERIA_TYPE': ['api.accountVelocity'],
+    'FAILURE_DETAILS': ['Expected : approvedCount but none found']
+})
+
+# Encode the new test case
+new_test_case['VALIDATION_CRITERIA_TYPE_ENC'] = label_encoder_criteria.transform(new_test_case['VALIDATION_CRITERIA_TYPE'])
+new_test_case['FAILURE_DETAILS_ENC'] = label_encoder_failure.transform(new_test_case['FAILURE_DETAILS'])
+
+# Predict recommendation
+new_X = new_test_case[['VALIDATION_CRITERIA_TYPE_ENC', 'FAILURE_DETAILS_ENC']]
+predicted_recommendation = model.predict(new_X)
+
+# Decode the predicted recommendation to get the original recommendation text
+predicted_recommendation_text = label_encoder_recommendation.inverse_transform(predicted_recommendation)
+print(f"Recommended Output: {predicted_recommendation_text[0]}")
