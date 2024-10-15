@@ -46,7 +46,6 @@ X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
 # Ensure the target variable is in numerical format
-# We will use Label Encoding to convert recommendations to numeric values
 from sklearn.preprocessing import LabelEncoder
 
 label_encoder = LabelEncoder()
@@ -61,19 +60,22 @@ model.fit(X_train_tfidf, y_train_encoded)
 y_pred = model.predict(X_test_tfidf)
 
 # Handle unknown labels in the prediction
-def handle_unknown_labels(pred_labels, known_labels):
+def handle_unknown_labels(pred_labels, label_encoder):
     """Map unknown labels to a default recommendation."""
     default_label = "<UNKNOWN RECOMMENDATION>"
     mapped_labels = []
     for label in pred_labels:
-        if label in known_labels:
-            mapped_labels.append(label)
-        else:
-            mapped_labels.append(default_label)
+        # Try to inverse transform the label
+        try:
+            mapped_label = label_encoder.inverse_transform([label])[0]
+        except ValueError:
+            # Handle unknown label
+            mapped_label = default_label
+        mapped_labels.append(mapped_label)
     return mapped_labels
 
-# Inverse transform predictions to original labels
-y_pred_labels = label_encoder.inverse_transform(y_pred)
+# Remap predicted labels back to original labels or unknown label
+y_pred_labels = handle_unknown_labels(y_pred, label_encoder)
 
 # Output accuracy
 accuracy = accuracy_score(y_test_encoded, y_pred)
@@ -88,5 +90,5 @@ for true_val, pred_val in zip(y_test, y_pred_labels):
 new_data = ["api.accountVelocity Expected : approvedCount but none found"]
 new_data_tfidf = vectorizer.transform(new_data)
 new_pred = model.predict(new_data_tfidf)
-new_pred_label = label_encoder.inverse_transform(new_pred)
+new_pred_label = handle_unknown_labels(new_pred, label_encoder)
 print(f"\nNew Data Prediction: {new_pred_label[0]}")
