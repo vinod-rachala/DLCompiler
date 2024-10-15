@@ -45,11 +45,19 @@ vectorizer = TfidfVectorizer()
 X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
+# Ensure the target variable is in numerical format
+# We will use Label Encoding to convert recommendations to numeric values
+from sklearn.preprocessing import LabelEncoder
+
+label_encoder = LabelEncoder()
+y_train_encoded = label_encoder.fit_transform(y_train)
+y_test_encoded = label_encoder.transform(y_test)
+
 # Train XGBoost Classifier
 model = XGBClassifier()
-model.fit(X_train_tfidf, y_train)
+model.fit(X_train_tfidf, y_train_encoded)
 
-# Predict on test set
+# Predict on the test set
 y_pred = model.predict(X_test_tfidf)
 
 # Handle unknown labels in the prediction
@@ -64,21 +72,21 @@ def handle_unknown_labels(pred_labels, known_labels):
             mapped_labels.append(default_label)
     return mapped_labels
 
-# Remap predicted labels
-y_pred_mapped = handle_unknown_labels(y_pred, y_train.unique())
+# Inverse transform predictions to original labels
+y_pred_labels = label_encoder.inverse_transform(y_pred)
 
 # Output accuracy
-accuracy = accuracy_score(y_test, y_pred)
+accuracy = accuracy_score(y_test_encoded, y_pred)
 print(f"Accuracy: {accuracy * 100:.2f}%")
 
 # Output the recommendations
 print("Predicted Recommendations:")
-for true_val, pred_val, pred_mapped in zip(y_test, y_pred, y_pred_mapped):
-    print(f"True: {true_val} | Predicted: {pred_val} | Mapped: {pred_mapped}")
+for true_val, pred_val in zip(y_test, y_pred_labels):
+    print(f"True: {true_val} | Predicted: {pred_val}")
 
 # Example prediction with unseen data
 new_data = ["api.accountVelocity Expected : approvedCount but none found"]
 new_data_tfidf = vectorizer.transform(new_data)
 new_pred = model.predict(new_data_tfidf)
-new_pred_mapped = handle_unknown_labels(new_pred, y_train.unique())
-print(f"\nNew Data Prediction: {new_pred_mapped[0]}")
+new_pred_label = label_encoder.inverse_transform(new_pred)
+print(f"\nNew Data Prediction: {new_pred_label[0]}")
