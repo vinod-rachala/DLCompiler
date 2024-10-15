@@ -1,60 +1,51 @@
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
 
-# Initializing TF-IDF Vectorizer
-tfidf_vectorizer_criteria = TfidfVectorizer()
-tfidf_vectorizer_failure = TfidfVectorizer()
+class CustomLabelEncoder(LabelEncoder):
+    def __init__(self, unknown_value=-1):
+        super().__init__()
+        self.unknown_value = unknown_value
 
-# Fit and transform the text data using TF-IDF
-X_criteria_tfidf = tfidf_vectorizer_criteria.fit_transform(df['VALIDATION_CRITERIA_TYPE'])
-X_failure_tfidf = tfidf_vectorizer_failure.fit_transform(df['FAILURE_DETAILS'])
+    def fit(self, y):
+        """Fit label encoder"""
+        super().fit(y)
+        # Store known classes
+        self.classes_ = np.append(self.classes_, '<UNK>')  # Add a token for unknowns
+        return self
 
-# Combine the two TF-IDF matrices into a single feature set
-import scipy
-X = scipy.sparse.hstack([X_criteria_tfidf, X_failure_tfidf])
+    def transform(self, y):
+        """Transform labels, handling unknown values"""
+        # Check for unknown labels and replace them with a custom unknown_value
+        transformed = []
+        for label in y:
+            if label in self.classes_:
+                transformed.append(super().transform([label])[0])
+            else:
+                transformed.append(self.unknown_value)
+        return np.array(transformed)
 
-# Encode the recommendation target (this remains label encoded)
-label_encoder_recommendation = LabelEncoder()
-y = label_encoder_recommendation.fit_transform(df['RECOMMENDATION'])
+    def inverse_transform(self, y):
+        """Inverse transform labels"""
+        # Inverse transform with handling of unknown values
+        inv_transformed = []
+        for value in y:
+            if value == self.unknown_value:
+                inv_transformed.append('<UNK>')
+            else:
+                inv_transformed.append(super().inverse_transform([value])[0])
+        return np.array(inv_transformed)
 
-# Splitting the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Example usage
+labels = ['cat', 'dog', 'fish']
+new_labels = ['cat', 'dog', 'bird']  # 'bird' is unknown
 
-# Subtract 1 to make the target zero-indexed (if needed by XGBoost)
-y_train_zero_indexed = y_train - 1
-y_test_zero_indexed = y_test - 1
+encoder = CustomLabelEncoder(unknown_value=-1)
+encoder.fit(labels)
 
-import xgboost as xgb
-from sklearn.metrics import accuracy_score
+# Transforming with known and unknown labels
+transformed_labels = encoder.transform(new_labels)
+print("Transformed labels:", transformed_labels)
 
-# Initialize the XGBoost classifier
-model = xgb.XGBClassifier(objective='multi:softmax', num_class=len(df['RECOMMENDATION'].unique()))
-
-# Train the model
-model.fit(X_train, y_train)
-
-# Predict on test data
-y_pred = model.predict(X_test)
-
-# Evaluate the model accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Model Accuracy: {accuracy}")
-
-
-import xgboost as xgb
-from sklearn.metrics import accuracy_score
-
-# Initialize the XGBoost classifier
-model = xgb.XGBClassifier(objective='multi:softmax', num_class=len(df['RECOMMENDATION'].unique()))
-
-# Train the model
-model.fit(X_train, y_train)
-
-# Predict on test data
-y_pred = model.predict(X_test)
-
-# Evaluate the model accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Model Accuracy: {accuracy}")
+# Inverse transforming back
+inverse_labels = encoder.inverse_transform(transformed_labels)
+print("Inverse transformed labels:", inverse_labels)
