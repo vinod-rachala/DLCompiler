@@ -36,3 +36,28 @@ class CustomLabelEncoder(LabelEncoder):
             else:
                 inv_transformed.append(super().inverse_transform([value])[0])
         return np.array(inv_transformed)
+
+
+
+
+
+
+# main.py
+
+# Import the custom label encoder
+from custom_label_encoder import CustomLabelEncoder
+
+# Example usage
+labels = ['cat', 'dog', 'fish']
+new_labels = ['cat', 'dog', 'bird']  # 'bird' is unknown
+
+encoder = CustomLabelEncoder(unknown_value=-1)
+encoder.fit(labels)
+
+# Transforming with known and unknown labels
+transformed_labels = encoder.transform(new_labels)
+print("Transformed labels:", transformed_labels)
+
+# Inverse transforming back
+inverse_labels = encoder.inverse_transform(transformed_labels)
+print("Inverse transformed labels:", inverse_labels)
