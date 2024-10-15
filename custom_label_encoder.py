@@ -1,63 +1,84 @@
-# custom_label_encoder.py
-
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 
-class CustomLabelEncoder(LabelEncoder):
-    def __init__(self, unknown_value=-1):
-        super().__init__()
-        self.unknown_value = unknown_value
+# Sample Data
+data = {
+    'VALIDATION_CRITERIA_TYPE': [
+        "api.accountVelocity", "api.purchaseAmount", "api.accountVelocity",
+        "api.accountBalance", "api.purchaseAmount"
+    ],
+    'FAILURE_DETAILS': [
+        "Expected : approvedCount but none found", 
+        "Expected : balance but none found", 
+        "Expected : approvedCount but none found", 
+        "Expected : balance but none found",
+        "Expected : approvedCount but none found"
+    ],
+    'RECOMMENDATION': [
+        "Expected : PurchaseAmount but none found", 
+        "Expected : accountBalance but none found",
+        "Expected : PurchaseAmount but none found",
+        "Expected : accountBalance but none found",
+        "Expected : PurchaseAmount but none found"
+    ]
+}
 
-    def fit(self, y):
-        """Fit label encoder"""
-        super().fit(y)
-        # Store known classes
-        self.classes_ = np.append(self.classes_, '<UNK>')  # Add a token for unknowns
-        return self
+# Create a DataFrame
+df = pd.DataFrame(data)
 
-    def transform(self, y):
-        """Transform labels, handling unknown values"""
-        # Check for unknown labels and replace them with a custom unknown_value
-        transformed = []
-        for label in y:
-            if label in self.classes_:
-                transformed.append(super().transform([label])[0])
-            else:
-                transformed.append(self.unknown_value)
-        return np.array(transformed)
+# Define the features and target
+X = df[['VALIDATION_CRITERIA_TYPE', 'FAILURE_DETAILS']]
+y = df['RECOMMENDATION']
 
-    def inverse_transform(self, y):
-        """Inverse transform labels"""
-        # Inverse transform with handling of unknown values
-        inv_transformed = []
-        for value in y:
-            if value == self.unknown_value:
-                inv_transformed.append('<UNK>')
-            else:
-                inv_transformed.append(super().inverse_transform([value])[0])
-        return np.array(inv_transformed)
+# Combine 'VALIDATION_CRITERIA_TYPE' and 'FAILURE_DETAILS' for text processing
+X_combined = X['VALIDATION_CRITERIA_TYPE'] + " " + X['FAILURE_DETAILS']
 
+# Split data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
 
+# Use TF-IDF for feature extraction
+vectorizer = TfidfVectorizer()
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
 
+# Train XGBoost Classifier
+model = XGBClassifier()
+model.fit(X_train_tfidf, y_train)
 
+# Predict on test set
+y_pred = model.predict(X_test_tfidf)
 
+# Handle unknown labels in the prediction
+def handle_unknown_labels(pred_labels, known_labels):
+    """Map unknown labels to a default recommendation."""
+    default_label = "<UNKNOWN RECOMMENDATION>"
+    mapped_labels = []
+    for label in pred_labels:
+        if label in known_labels:
+            mapped_labels.append(label)
+        else:
+            mapped_labels.append(default_label)
+    return mapped_labels
 
-# main.py
+# Remap predicted labels
+y_pred_mapped = handle_unknown_labels(y_pred, y_train.unique())
 
-# Import the custom label encoder
-from custom_label_encoder import CustomLabelEncoder
+# Output accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy * 100:.2f}%")
 
-# Example usage
-labels = ['cat', 'dog', 'fish']
-new_labels = ['cat', 'dog', 'bird']  # 'bird' is unknown
+# Output the recommendations
+print("Predicted Recommendations:")
+for true_val, pred_val, pred_mapped in zip(y_test, y_pred, y_pred_mapped):
+    print(f"True: {true_val} | Predicted: {pred_val} | Mapped: {pred_mapped}")
 
-encoder = CustomLabelEncoder(unknown_value=-1)
-encoder.fit(labels)
-
-# Transforming with known and unknown labels
-transformed_labels = encoder.transform(new_labels)
-print("Transformed labels:", transformed_labels)
-
-# Inverse transforming back
-inverse_labels = encoder.inverse_transform(transformed_labels)
-print("Inverse transformed labels:", inverse_labels)
+# Example prediction with unseen data
+new_data = ["api.accountVelocity Expected : approvedCount but none found"]
+new_data_tfidf = vectorizer.transform(new_data)
+new_pred = model.predict(new_data_tfidf)
+new_pred_mapped = handle_unknown_labels(new_pred, y_train.unique())
+print(f"\nNew Data Prediction: {new_pred_mapped[0]}")
