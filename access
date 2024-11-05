@@ -1,0 +1,60 @@
+# Including additional permissions for the Bedrock Agent as requested and regenerating the updated permissions list.
+
+consolidated_permissions_with_bedrock_agent_text = """
+UserRole
+   - cognito-idp:AdminInitiateAuth
+   - cognito-idp:AdminRespondToAuthChallenge
+   - kms:Decrypt
+
+FrontendApplicationRole
+   - kms:Encrypt
+   - kms:Decrypt
+   - kms:GenerateDataKey
+   - s3:GetObject
+
+LLMProcessingRole
+   - bedrock:InvokeModel
+   - kms:Encrypt
+   - kms:Decrypt
+   - s3:GetObject
+   - s3:PutObject
+
+BedrockAgentsRole - With Bedrock Agent permissions included
+   - bedrock:InvokeModel (for embedding purposes)
+   - bedrock:InvokeAgent
+   - s3:GetObject
+   - s3:PutObject
+   - s3:DeleteObject
+
+LambdaExecutionRole
+   - execute-api:Invoke
+   - efs:DescribeFileSystems
+   - rds:DescribeDBInstances
+   - dynamodb:GetItem
+   - kms:Decrypt
+   - ec2:CreateNetworkInterface
+   - ec2:DeleteNetworkInterface
+   - ec2:DescribeNetworkInterfaces
+
+ObservabilityRole
+   - logs:CreateLogGroup
+   - logs:CreateLogStream
+   - logs:PutLogEvents
+   - s3:PutObject
+   - athena:StartQueryExecution
+   - athena:GetQueryResults
+
+AdminRole
+   - *:*
+
+TaggingRole
+   - tag:GetResources
+   - tag:TagResources
+"""
+
+# Save the consolidated permissions text with Bedrock Agent included to a file.
+file_path_bedrock_agent = '/mnt/data/Consolidated_Role_Based_Permissions_List_With_Bedrock_Agent.txt'
+with open(file_path_bedrock_agent, 'w') as file:
+    file.write(consolidated_permissions_with_bedrock_agent_text)
+
+file_path_bedrock_agent
